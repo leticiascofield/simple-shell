@@ -9,32 +9,51 @@
 #include <unistd.h>
 
 /*
-Answers can be either in Portuguese or in English.
-Respostas podem sem tanto em português como em inglês.
-*/
 
-/*
-1. Term of commitment
+1. Term of Commitment
 
 The group members declare that all code developed for this project is their own.
 The group members declare that they have not copied material from the Internet
-  nor obtained code from third parties.
+nor obtained code from third parties.
 
-2. Group members and allocation of effort
+2. Group Members and Allocation of Effort
 
-Fill in the lines below with the name and email of the group members.
-Replace XX with the contribution of each group member in the development of the work.
-
-Name <email@ufmg.br> XX%
-Name <email@ufmg.br> XX%
+Davi Porto Araujo <portodaviporto@gmail.com> 50%
+Leticia Scofield Lenzoni <leticialenzoni@gmail.com> 50%
 
 3. Solutions
 
-Briefly describe the solutions implemented for this project and justify their choices.
+This project consists of implementing a simplified shell in C, inspired by the xv6 Unix shell. 
+The provided skeleton already handled command parsing, while the task was to implement the 
+execution logic using system calls. The main components implemented were:
 
-4. Bibliographic references
+- Task 1: `fork1` Function  
+  The function `fork1` wraps the `fork()` system call and exits the program with an error message 
+  if the fork fails. This ensures that the shell can safely create child processes.
 
-Add the bibliographic references here.
+- Task 2: Simple Command Execution  
+  The function `handle_simple_cmd` was implemented using `execvp`, allowing execution of standard 
+  commands like `ls`, `cat`, etc.
+
+- Task 3: Input/Output Redirection  
+  The function `handle_redirection` handles `<` and `>` symbols, using `open` and `dup2` to 
+  redirect `stdin` and `stdout` as needed.
+
+- Task 4: Piping  
+  The `handle_pipe` function was implemented using `pipe`, `fork`, `dup2`, and `wait`. 
+  It sets up inter-process communication between commands connected by `|`.
+
+- Task 5: Command `cd`  
+  The main function includes logic to handle the built-in command `cd`, which is executed 
+  in the parent process. A more appropriate error message was added when the directory 
+  change fails.
+
+4. Bibliographic References
+
+- man pages for `fork`, `execvp`, `pipe`, `dup2`, `open`, `wait`, and `chdir`:  
+  https://linux.die.net/man/
+
+- UFMG Operating Systems slides and class material
 
 */
 
@@ -132,9 +151,8 @@ int fork1(void) {
         exit(-1);
     }
 
-    /* END OF TASK 1 */
-
     return 0;
+    /* END OF TASK 1 */
 }
 
 void handle_simple_cmd(struct execcmd *ecmd) {
@@ -224,7 +242,6 @@ int main(void) {
          * as it reifies the operation that failed, the reasons may involve the directory not existing, permission
          * issues, or even an invalid path.
          *
-
          */
         if (buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' ') {
             buf[strlen(buf) - 1] = 0;
