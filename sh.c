@@ -56,29 +56,29 @@ struct cmd {
 };
 
 struct execcmd {
-    int type;             // ' ' (exec)
-    char *argv[MAXARGS];  // Arguments for the command to be executed
+    int type; // ' ' (exec)
+    char *argv[MAXARGS]; // Arguments for the command to be executed
 };
 
 struct redircmd {
-    int type;         // < or > (redirection)
-    struct cmd *cmd;  // The command to execute (e.g., an execcmd)
-    char *file;       // The input or output file
-    int mode;         // The mode in which the file should be opened
-    int fd;           // The file descriptor number to be used
+    int type; // < or > (redirection)
+    struct cmd *cmd; // The command to execute (e.g., an execcmd)
+    char *file; // The input or output file
+    int mode; // The mode in which the file should be opened
+    int fd; // The file descriptor number to be used
 };
 
 struct pipecmd {
-    int type;           // | (pipe)
-    struct cmd *left;   // Left side of the pipe
-    struct cmd *right;  // Right side of the pipe
+    int type; // | (pipe)
+    struct cmd *left; // Left side of the pipe
+    struct cmd *right; // Right side of the pipe
 };
 
-int fork1(void);                                        // Fork but exit if an error occurs
-struct cmd *parsecmd(char *);                           // Process the command line
-void handle_simple_cmd(struct execcmd *ecmd);           // Handle simple commands
-void handle_redirection(struct redircmd *rcmd);         // Handle redirection
-void handle_pipe(struct pipecmd *pcmd, int *p, int r);  // Handle pipes
+int fork1(void); // Fork but exit if an error occurs
+struct cmd *parsecmd(char *); // Process the command line
+void handle_simple_cmd(struct execcmd *ecmd); // Handle simple commands
+void handle_redirection(struct redircmd *rcmd); // Handle redirection
+void handle_pipe(struct pipecmd *pcmd, int *p, int r); // Handle pipes
 
 /* Execute the command cmd. It never returns. */
 void runcmd(struct cmd *cmd) {
@@ -96,7 +96,7 @@ void runcmd(struct cmd *cmd) {
             exit(-1);
 
         case ' ':
-            ecmd = (struct execcmd *)cmd;
+            ecmd = (struct execcmd *) cmd;
             if (ecmd->argv[0] == 0)
                 exit(0);
             handle_simple_cmd(ecmd);
@@ -104,13 +104,13 @@ void runcmd(struct cmd *cmd) {
 
         case '>':
         case '<':
-            rcmd = (struct redircmd *)cmd;
+            rcmd = (struct redircmd *) cmd;
             handle_redirection(rcmd);
             runcmd(rcmd->cmd);
             break;
 
         case '|':
-            pcmd = (struct pipecmd *)cmd;
+            pcmd = (struct pipecmd *) cmd;
             handle_pipe(pcmd, p, r);
             break;
     }
@@ -119,29 +119,80 @@ void runcmd(struct cmd *cmd) {
 
 int fork1(void) {
     /* Task 1: Implement the fork1 function.
-    The function is supposed to create a new process using the `fork()` system call.
+    The function is supposed to create a new process using the fork() system call.
     It should print a message if the fork fails, otherwise return the process ID of the child process (or -1 if the fork fails).
     */
-    fprintf(stderr, "Fork function not implemented\n");
-    exit(-1);
+    int p_id = fork();
+
+    if (p_id) {
+        if (p_id > 0) {
+            return p_id;
+        }
+        fprintf(stderr, "Fork function not implemented\n");
+        exit(-1);
+    }
+
     /* END OF TASK 1 */
+
+    return 0;
 }
 
 void handle_simple_cmd(struct execcmd *ecmd) {
     /* Task 2: Implement the code below to execute simple commands. */
-    fprintf(stderr, "exec not implemented\n");
+    execvp(ecmd->argv[0], ecmd->argv);
+
+    fprintf(stderr, "Error executing %s\n", ecmd->argv[0]);
+    exit(-1);
     /* END OF TASK 2 */
 }
 
 void handle_redirection(struct redircmd *rcmd) {
     /* Task 3: Implement the code below to handle input/output redirection. */
-    fprintf(stderr, "redir not implemented\n");
+
+    int file_id = open(rcmd->file, rcmd->mode, 777);
+
+    if (file_id < 0) {
+        fprintf(stderr, "could not open file  %s\n", rcmd->file);
+        exit(-1);
+    }
+
+    if (dup2(file_id, rcmd->fd) < 0) {
+        close(file_id);
+
+        fprintf(stderr, "failed to bind files\n");
+        exit(-1);
+    }
     /* END OF TASK 3 */
 }
 
 void handle_pipe(struct pipecmd *pcmd, int *p, int r) {
     /* Task 4: Implement the code below to handle pipes. */
-    fprintf(stderr, "pipe not implemented\n");
+    if(pipe(p) < 0) {
+        fprintf(stderr, "failed to stabilish pipe comunication\n");
+        exit(-1);
+    }
+
+    if(fork1() == 0) {
+        close(p[0]);
+
+        dup2(p[1], STDOUT_FILENO);
+
+
+        runcmd(pcmd->left);
+    }
+
+    if(fork1() == 0) {
+        close(p[1]);
+        dup2(p[0], STDIN_FILENO);
+
+        runcmd(pcmd->right);
+    }
+
+    close(p[0]);
+    close(p[1]);
+
+    wait(&r);
+    wait(&r);
     /* END OF TASK 4 */
 }
 
@@ -150,7 +201,7 @@ int getcmd(char *buf, int nbuf) {
         fprintf(stdout, "$ ");
     memset(buf, 0, nbuf);
     fgets(buf, nbuf, stdin);
-    if (buf[0] == 0)  // EOF
+    if (buf[0] == 0) // EOF
         return -1;
     return 0;
 }
@@ -164,6 +215,15 @@ int main(void) {
         /* Task 5: Explain the purpose of the if statement below and correct the error message.
         Why is the current error message incorrect? Justify the new message. */
         /* Answer:
+         * The code below checks if the "cd " command(changing directory) executed properly, to avoid problems with
+         * whitespace and endLine the path is trimmed, removing either of those.
+         *
+         * The message should be corrected because process does not exist, is far too abstract  because chdir()
+         * deals with directory changes, processes can be virtually anything in the program.
+         * A more descriptive message of what went wrong could be  "cannot change directory to {required path}",
+         * as it reifies the operation that failed, the reasons may involve the directory not existing, permission
+         * issues, or even an invalid path.
+         *
 
          */
         if (buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' ') {
@@ -192,7 +252,7 @@ execcmd(void) {
     cmd = malloc(sizeof(*cmd));
     memset(cmd, 0, sizeof(*cmd));
     cmd->type = ' ';
-    return (struct cmd *)cmd;
+    return (struct cmd *) cmd;
 }
 
 struct cmd *
@@ -206,7 +266,7 @@ redircmd(struct cmd *subcmd, char *file, int type) {
     cmd->file = file;
     cmd->mode = (type == '<') ? O_RDONLY : O_WRONLY | O_CREAT | O_TRUNC;
     cmd->fd = (type == '<') ? 0 : 1;
-    return (struct cmd *)cmd;
+    return (struct cmd *) cmd;
 }
 
 struct cmd *
@@ -218,7 +278,7 @@ pipecmd(struct cmd *left, struct cmd *right) {
     cmd->type = '|';
     cmd->left = left;
     cmd->right = right;
-    return (struct cmd *)cmd;
+    return (struct cmd *) cmd;
 }
 
 /****************************************************************
@@ -271,7 +331,9 @@ int peek(char **ps, char *es, char *toks) {
 }
 
 struct cmd *parseline(char **, char *);
+
 struct cmd *parsepipe(char **, char *);
+
 struct cmd *parseexec(char **, char *);
 
 /* Copy characters from the input buffer, starting from s to es.
@@ -350,7 +412,7 @@ parseexec(char **ps, char *es) {
     struct cmd *ret;
 
     ret = execcmd();
-    cmd = (struct execcmd *)ret;
+    cmd = (struct execcmd *) ret;
 
     argc = 0;
     ret = parseredirs(ret, ps, es);
